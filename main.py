@@ -1,11 +1,8 @@
-# main.py
-
 import tkinter as tk
 from tkinter import ttk, messagebox
 from adaline import Preprocessing_After_input2
 from preprocessing import load_and_preprocess_data
 from perceptron import Preprocessing_After_input_perceptron
-
 
 def run_model():
     try:
@@ -56,7 +53,6 @@ def run_model():
         messagebox.showerror("Error", f"An error occurred:\n{e}")
 
 
-# ---------------- GUI ----------------
 
 root = tk.Tk()
 root.title("Adaline & Perceptron Classifier")
