@@ -9,7 +9,18 @@ def signum(net):
 
   elif net<0:
     return -1
-  
+
+
+def confusion_matrix_manual(y_true, y_pred):
+
+    TP = np.sum((y_true == 1) & (y_pred == 1))
+    TN = np.sum((y_true == -1) & (y_pred == -1))
+    FP = np.sum((y_true == -1) & (y_pred == 1))
+    FN = np.sum((y_true == 1) & (y_pred == -1))
+
+    cm = np.array([[TP, FN],
+                   [FP, TN]])
+    return cm
 def Preprocessing_After_input_perceptron(data,Species1,Species2, feature1,feature2,lr,epoch,mse_threshold,is_bias):
     s1=data[data['Species']==Species1]
     s2=data[data['Species']==Species2]
@@ -59,6 +70,6 @@ def Preprocessing_After_input_perceptron(data,Species1,Species2, feature1,featur
     accuracy = np.mean(y_pred_test.flatten() == y_test_np.flatten()) * 100
     print(f"Test Accuracy: {accuracy:.2f}%")
 
-    unique, counts = np.unique(y_pred_test, return_counts=True)
-    print(dict(zip(unique, counts)))
-    return accuracy,final_data,w
+    cm = confusion_matrix_manual(y_test_np.flatten(), y_pred_test.flatten())
+
+    return accuracy, final_data, w, X_test_np, y_test_np, cm

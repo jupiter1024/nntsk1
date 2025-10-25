@@ -6,6 +6,17 @@ from sklearn.preprocessing import LabelEncoder
 def mse(y_true, y_pred):
     return np.mean((y_true - y_pred) ** 2)
 
+
+def confusion_matrix_manual(y_true, y_pred):
+
+    TP = np.sum((y_true == 1) & (y_pred == 1))
+    TN = np.sum((y_true == -1) & (y_pred == -1))
+    FP = np.sum((y_true == -1) & (y_pred == 1))
+    FN = np.sum((y_true == 1) & (y_pred == -1))
+
+    cm = np.array([[TP, FN],
+                   [FP, TN]])
+    return cm
 def signum(net):
   if net>0:
     return 1
@@ -73,4 +84,7 @@ def Preprocessing_After_input2(data,Species1,Species2, feature1,feature2,lr,epoc
     y_pred_test_labels = np.where(y_pred_test2 >= 0, 1, -1)
     accuracy = np.mean(y_pred_test_labels.flatten() == y_test_np.flatten()) * 100
     print(f"Test Accuracy: {accuracy:.2f}%")
-    return accuracy,final_data,w2
+    cm = confusion_matrix_manual(y_test_np.flatten(), y_pred_test_labels.flatten())
+
+    return accuracy, final_data, w2, X_test_np, y_test_np, cm
+
