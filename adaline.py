@@ -23,7 +23,7 @@ def signum(net):
   elif net<=0:
     return -1
 
-def Preprocessing_After_input2(data,Species1,Species2, feature1,feature2,lr,epoch,mse_threshold,is_bias):
+def Adaline(data,Species1,Species2, feature1,feature2,lr,epoch,mse_threshold,is_bias):
     
     s1=data[data['Species']==Species1]
     s2=data[data['Species']==Species2]

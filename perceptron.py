@@ -21,7 +21,7 @@ def confusion_matrix_manual(y_true, y_pred):
     cm = np.array([[TP, FN],
                    [FP, TN]])
     return cm
-def Preprocessing_After_input_perceptron(data,Species1,Species2, feature1,feature2,lr,epoch,mse_threshold,is_bias):
+def Perceptron(data,Species1,Species2, feature1,feature2,lr,epoch,mse_threshold,is_bias):
     s1=data[data['Species']==Species1]
     s2=data[data['Species']==Species2]
     new_data=pd.concat([s1,s2])
@@ -36,6 +36,7 @@ def Preprocessing_After_input_perceptron(data,Species1,Species2, feature1,featur
     X_train, X_test, y_train, y_test = train_test_split( X, y_encoded, test_size=0.4,random_state=42,stratify=y_encoded ,shuffle=True     
     )
     w=np.random.randn(3,1)
+    print(w)
     if is_bias:
      X_train["bias"]=1
      X_test["bias"] = 1
@@ -71,5 +72,5 @@ def Preprocessing_After_input_perceptron(data,Species1,Species2, feature1,featur
     print(f"Test Accuracy: {accuracy:.2f}%")
 
     cm = confusion_matrix_manual(y_test_np.flatten(), y_pred_test.flatten())
-
+    print(w)
     return accuracy, final_data, w, X_test_np, y_test_np, cm

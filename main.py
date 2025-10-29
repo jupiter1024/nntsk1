@@ -5,9 +5,9 @@ import seaborn as sns
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from adaline import Preprocessing_After_input2
+from adaline import Adaline
 from preprocessing import load_and_preprocess_data
-from perceptron import Preprocessing_After_input_perceptron
+from perceptron import Perceptron
 
 
 # =========================================
@@ -90,12 +90,12 @@ def run_model():
 
         # Run chosen model
         if model_type == "Adaline":
-            accuracy, final_data, w, X_test_np, y_test_np, cm = Preprocessing_After_input2(
+            accuracy, final_data, w, X_test_np, y_test_np, cm = Adaline(
                 data, species1, species2, feature1, feature2,
                 lr, epoch, mse_threshold, is_bias
             )
         else:
-            accuracy, final_data, w, X_test_np, y_test_np, cm = Preprocessing_After_input_perceptron(
+            accuracy, final_data, w, X_test_np, y_test_np, cm = Perceptron(
                 data, species1, species2, feature1, feature2,
                 lr, epoch, mse_threshold, is_bias
             )
