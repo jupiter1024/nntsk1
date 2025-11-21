@@ -35,15 +35,3 @@ def plot_training_loss(loss_history):
     plt.grid(True)
     plt.tight_layout()
     plt.show()
-
-def plot_network_architecture(hidden_layers):
-    layers = [5] + hidden_layers + [3]
-    plt.figure(figsize=(8, 4))
-    plt.bar(range(len(layers)), layers)
-    plt.title('Neural Network Architecture')
-    plt.xlabel('Layer')
-    plt.ylabel('Number of Neurons')
-    plt.xticks(range(len(layers)), 
-               ['Input'] + [f'Hidden {i+1}' for i in range(len(hidden_layers))] + ['Output'])
-    plt.tight_layout()
-    plt.show()

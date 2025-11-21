@@ -134,9 +134,6 @@ class App:
             self.results_text.insert(tk.END, f"\nTraining completed!\n")
             self.results_text.insert(tk.END, f"Final loss: {loss_history[-1]:.4f}\n")
 
-            # Plot network architecture
-            plot_network_architecture(num_of_neurons_of_each_hidden_layer)
-            
         except Exception as e:
             messagebox.showerror("Error", f"Training failed: {str(e)}")
     
