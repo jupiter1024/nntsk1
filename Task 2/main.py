@@ -4,7 +4,7 @@ import numpy as np
 
 from NN import NN
 from preprocessing import prepare_data_for_nn, split_data_by_class, one_hot_encode, preprocess_sample
-from helpers import create_confusion_matrix, calculate_accuracy, plot_confusion_matrix, plot_training_loss, plot_network_architecture
+from helpers import create_confusion_matrix, calculate_accuracy, plot_confusion_matrix
 
 class App:
     def __init__(self, root):
@@ -129,10 +129,11 @@ class App:
             self.results_text.insert(tk.END, "-" * 50 + "\n")
             
             # Train
-            loss_history = self.network.train(self.X_train, self.y_train_onehot, lr, num_epochs)
+            loss_history, accuracy_history = self.network.train(self.X_train, self.y_train_onehot, lr, num_epochs)
             
             self.results_text.insert(tk.END, f"\nTraining completed!\n")
-            self.results_text.insert(tk.END, f"Final loss: {loss_history[-1]:.4f}\n")
+            self.results_text.insert(tk.END, f"Final loss: {float(loss_history[-1]):.4f}\n")
+            self.results_text.insert(tk.END, f"Final accuracy: {float(accuracy_history[-1])*100:.2f}%\n")
 
         except Exception as e:
             messagebox.showerror("Error", f"Training failed: {str(e)}")

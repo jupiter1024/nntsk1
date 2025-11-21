@@ -1,5 +1,5 @@
 import numpy as np
-
+from sklearn.metrics import accuracy_score
 class NN:
     def __init__(self, input_sz, hidden_layers, output_sz, activation_func='sigmoid', use_bias=True):
         self.input_size, self.output_size= input_sz, output_sz
@@ -87,6 +87,7 @@ class NN:
         x = np.asarray(x, dtype=np.float64)
         y = np.asarray(y, dtype=np.float64)
         loss_history = []
+        accuracy_history = []
         
         num_samples = x.shape[0]
         
@@ -115,10 +116,16 @@ class NN:
             avg_loss = epoch_loss / num_samples
             loss_history.append(avg_loss)
             
+            # Calculate accuracy for the epoch
+            predictions = self.predict(x)
+            labels = np.argmax(y, axis=1)
+            accuracy = accuracy_score(labels, predictions)
+            accuracy_history.append(accuracy)
+            
             if epoch % 100 == 0:
-                print(f"Epoch {epoch}, Loss: {avg_loss:.4f}")
+                print(f"Epoch {epoch}, Loss: {avg_loss:.4f}, Accuracy: {accuracy*100:.2f}%")
     
-        return np.array(loss_history)
+        return np.array(loss_history), np.array(accuracy_history)
     
     def predict_prob(self, x):
         x = np.asarray(x, dtype=np.float64)

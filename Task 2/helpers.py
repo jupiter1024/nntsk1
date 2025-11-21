@@ -25,13 +25,3 @@ def plot_confusion_matrix(cm, class_names):
     plt.title('Confusion Matrix')
     plt.tight_layout()
     plt.show()
-
-def plot_training_loss(loss_history):
-    plt.figure(figsize=(8, 4))
-    plt.plot(loss_history)
-    plt.title('Training Loss Over Epochs')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
