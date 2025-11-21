@@ -3,25 +3,99 @@ import numpy as np
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
-def load_and_preprocess_data():
-    data = pd.read_csv(r'penguins.csv')
-    labelencoder = LabelEncoder()
-    data['OriginLocation'] = labelencoder.fit_transform(data['OriginLocation'])
+def preprocess_sample(sample_dict, features, origin_location_encoder, mean_imputer, median_imputer, scaler):
+    # Create DataFrame from sample
+    df_sample = pd.DataFrame([sample_dict])
+    
+    # Ensure all features are present
+    for feature in features:
+        if feature not in df_sample.columns:
+            df_sample[feature] = None
+    
+    # Reorder columns to match features order
+    df_sample = df_sample[features]
+    
+    # Step 1: Encode OriginLocation
+    if 'OriginLocation' in df_sample.columns:
+        df_sample['OriginLocation'] = origin_location_encoder.transform(df_sample['OriginLocation'])
+    
+    # Step 2: Apply imputation
     mean_cols = ['CulmenDepth', 'CulmenLength', 'FlipperLength']
     median_col = ['BodyMass']
+    
+    if all(col in df_sample.columns for col in mean_cols):
+        df_sample[mean_cols] = mean_imputer.transform(df_sample[mean_cols])
+    if all(col in df_sample.columns for col in median_col):
+        df_sample[median_col] = median_imputer.transform(df_sample[median_col])
+    
+    # Step 3: Apply scaling (must match the order used during fit: mean_cols + median_col)
+    scale_cols = ['CulmenDepth', 'CulmenLength', 'FlipperLength', 'BodyMass']
+    if all(col in df_sample.columns for col in scale_cols):
+        # Transform with DataFrame to match the fit (prevents feature name warning)
+        df_sample[scale_cols] = scaler.transform(df_sample[scale_cols])
+    
+    # Return as numpy array in the correct feature order
+    return df_sample[features].values
+
+def load_and_preprocess_data():
+    """
+    Load data and fit all transformers, then preprocess all samples using preprocess_single_sample.
+    """
+    # Load raw data
+    d = pd.read_csv(r'penguins.csv')
+    
+    # Fit transformers on full dataset
+    origin_location_encoder = LabelEncoder()
+    origin_location_encoder.fit(d['OriginLocation'])
+    
+    mean_cols = ['CulmenDepth', 'CulmenLength', 'FlipperLength']
+    median_col = ['BodyMass']
+    
     mean_imputer = SimpleImputer(strategy='mean')
+    mean_imputer.fit(d[mean_cols])
+    
     median_imputer = SimpleImputer(strategy='median')
-    mean_imputed = mean_imputer.fit_transform(data[mean_cols])
-    median_imputed = median_imputer.fit_transform(data[median_col])
-    mean_imputed_df = pd.DataFrame(mean_imputed, columns=mean_cols)
-    median_imputed_df = pd.DataFrame(median_imputed, columns=median_col)
-    imputed_data = pd.concat([mean_imputed_df, median_imputed_df], axis=1)
-    data[['CulmenDepth', 'CulmenLength', 'BodyMass', 'FlipperLength']] = imputed_data
-    scaler = MinMaxScaler()
-    data[['CulmenDepth', 'CulmenLength', 'BodyMass', 'FlipperLength']] = scaler.fit_transform(
-        data[['CulmenDepth', 'CulmenLength', 'BodyMass', 'FlipperLength']]
+    median_imputer.fit(d[median_col])
+    
+    # Fit scaler (need to impute first for fitting)
+    temp_mean_imputed = mean_imputer.transform(d[mean_cols])
+    temp_median_imputed = median_imputer.transform(d[median_col])
+    temp_imputed_df = pd.DataFrame(
+        np.hstack([temp_mean_imputed, temp_median_imputed]),
+        columns=mean_cols + median_col
     )
-    return data, labelencoder, mean_imputer, median_imputer, scaler
+    
+    scaler = MinMaxScaler()
+    scaler.fit(temp_imputed_df)
+    
+    # Define feature columns
+    feature_cols = ['CulmenLength', 'CulmenDepth', 'FlipperLength', 'BodyMass', 'OriginLocation']
+    
+    # Now preprocess each sample using the same function
+    preprocessed_samples = []
+    for idx, row in d.iterrows():
+        # Create sample dict with only feature columns
+        sample_dict = {col: row[col] for col in feature_cols}
+        preprocessed_sample = preprocess_sample(
+            sample_dict,
+            feature_cols,
+            origin_location_encoder,
+            mean_imputer,
+            median_imputer,
+            scaler
+        )
+        preprocessed_samples.append(preprocessed_sample[0])  # Remove extra dimension
+    
+    # Reconstruct DataFrame with preprocessed data
+    preprocessed_df = pd.DataFrame(
+        preprocessed_samples,
+        columns=feature_cols
+    )
+    
+    # Update original dataframe with preprocessed values
+    d[feature_cols] = preprocessed_df
+    
+    return d, origin_location_encoder, mean_imputer, median_imputer, scaler
 
 def prepare_data_for_nn():
     d, origin_location_encoder, mean_imputer, median_imputer, scaler = load_and_preprocess_data()
@@ -51,40 +125,3 @@ def split_data_by_class(x, y, train_samples=30, test_samples=20):
 def one_hot_encode(y, num_classes):
     y = y.astype(int)
     return np.eye(num_classes)[y]
-
-def preprocess_sample(sample_dict, features, origin_location_encoder, mean_imputer, median_imputer, scaler):
-    # Create a DataFrame with the sample
-    sample_df = pd.DataFrame([sample_dict])
-    
-    # Encode OriginLocation
-    if 'OriginLocation' in sample_df.columns:
-        sample_df['OriginLocation'] = origin_location_encoder.transform(sample_df['OriginLocation'])
-    
-    # Reorder columns to match features order
-    sample_df = sample_df[features]
-    
-    # Separate columns for imputation
-    mean_cols = ['CulmenDepth', 'CulmenLength', 'FlipperLength']
-    median_col = ['BodyMass']
-    
-    # Apply imputation (in case of missing values)
-    mean_imputed = mean_imputer.transform(sample_df[mean_cols])
-    median_imputed = median_imputer.transform(sample_df[median_col])
-    
-    # Combine imputed data
-    mean_imputed_df = pd.DataFrame(mean_imputed, columns=mean_cols)
-    median_imputed_df = pd.DataFrame(median_imputed, columns=median_col)
-    imputed_data = pd.concat([mean_imputed_df, median_imputed_df], axis=1)
-    
-    # Add OriginLocation back
-    imputed_data['OriginLocation'] = sample_df['OriginLocation'].values
-    
-    # Reorder to match features order before scaling
-    imputed_data = imputed_data[features]
-    
-    # Apply scaling to numerical features
-    numerical_cols = ['CulmenDepth', 'CulmenLength', 'BodyMass', 'FlipperLength']
-    imputed_data[numerical_cols] = scaler.transform(imputed_data[numerical_cols])
-    
-    # Return as numpy array in the correct order (features order)
-    return imputed_data.values

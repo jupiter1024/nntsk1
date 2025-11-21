@@ -214,37 +214,36 @@ class App:
             
             def classify():
                 try:
-                    # Get input values as dictionary
+                    # Collect inputs
                     sample_dict = {}
                     for feature in self.features:
                         value = entries[feature].get()
                         if feature == 'OriginLocation':
-                            # Keep as string for encoding
-                            sample_dict[feature] = value
+                            sample_dict[feature] = str(value)
                         else:
-                            # Convert to float
                             sample_dict[feature] = float(value)
-                    
-                    # Apply the same preprocessing as training data
+
+                    # Apply same preprocessing pipeline as training
                     preprocessed_sample = preprocess_sample(
-                        sample_dict, 
-                        self.features, 
-                        self.origin_location_encoder, 
-                        self.mean_imputer, 
-                        self.median_imputer, 
+                        sample_dict,
+                        self.features,
+                        self.origin_location_encoder,
+                        self.mean_imputer,
+                        self.median_imputer,
                         self.scaler
                     )
-                    
-                    # Predict
+
+                    # Predict probabilities and class
                     probabilities = self.network.predict_prob(preprocessed_sample)[0]
                     predicted_class = np.argmax(probabilities)
                     class_name = self.label_encoder.inverse_transform([predicted_class])[0]
-                    
+
                     # Display results
                     result_text = f"Predicted: {class_name}\n"
                     result_text += f"Confidence: {probabilities[predicted_class] * 100:.1f}%"
                     result_label.config(text=result_text)
-                    
+                except ValueError as ve:
+                    messagebox.showerror("Error", f"Invalid input value: {ve}")
                 except Exception as e:
                     messagebox.showerror("Error", f"Please check input values: {str(e)}")
             
