@@ -29,7 +29,7 @@ class NN:
         return np.tanh(x)
     
     def tanh_derivative(self, x):
-        return 1 - x ** 2
+        return 1 - (np.tanh(x)) ** 2
     
     def softmax(self, x):
         exp_x = np.exp(x - np.max(x, axis=1, keepdims=True))

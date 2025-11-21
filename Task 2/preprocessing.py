@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.utils import shuffle
 
 def preprocess_sample(sample_dict, features, origin_location_encoder, mean_imputer, median_imputer, scaler):
     # Create DataFrame from sample
@@ -117,6 +118,13 @@ def split_data_by_class(x, y, train_samples=30, test_samples=20):
         y_train_parts.append(class_y[:train_samples])
         y_test_parts.append(class_y[train_samples:train_samples + test_samples])
     x_train, y_train, x_test, y_test = np.vstack(x_train_parts), np.hstack(y_train_parts), np.vstack(x_test_parts), np.hstack(y_test_parts)
+    
+    # Shuffle training data to prevent bias from data order
+    x_train, y_train = shuffle(x_train, y_train, random_state=42)
+    
+    # Shuffle test data to prevent bias from data order
+    x_test, y_test = shuffle(x_test, y_test, random_state=42)
+    
     print(f"training set: {x_train.shape[0]} samples")
     print(f"test set: {x_test.shape[0]} samples")
     print(f"Classes in training: {np.unique(y_train)}")

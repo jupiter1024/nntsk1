@@ -197,13 +197,12 @@ class App:
             input_frame.pack(pady=10)
             
             entries = {}
-            origin_location_values = ['Biscoe', 'Dream', 'Torgersen']
+            origin_location_values = list(self.origin_location_encoder.classes_)
             for i, feature in enumerate(self.features):
                 tk.Label(input_frame, text=feature).grid(row=i, column=0, padx=5, pady=2, sticky="w")
                 if feature == 'OriginLocation':
-                    # Use dropdown for OriginLocation
                     entry = ttk.Combobox(input_frame, values=origin_location_values, state='readonly')
-                    entry.current(0)  # Set default to first value
+                    entry.current(0)
                 else:
                     entry = tk.Entry(input_frame)
                 entry.grid(row=i, column=1, padx=5, pady=2)
