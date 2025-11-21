@@ -1,13 +1,12 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
 
-from neural_network import NeuralNetwork
-from data_loader import prepare_data_for_nn, split_data_by_class, one_hot_encode
+from NN import NN
+from preprocessing import prepare_data_for_nn, split_data_by_class, one_hot_encode, preprocess_sample
+from helpers import create_confusion_matrix, calculate_accuracy, plot_confusion_matrix, plot_training_loss, plot_network_architecture
 
-class NeuralNetworkApp:
+class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Neural Network Penguin Classifier")
@@ -18,9 +17,8 @@ class NeuralNetworkApp:
         self.create_widgets()
     
     def load_data(self):
-        """Load and prepare data"""
         try:
-            X, y, self.label_encoder, self.features = prepare_data_for_nn()
+            X, y, self.label_encoder, self.features, self.origin_location_encoder, self.mean_imputer, self.median_imputer, self.scaler = prepare_data_for_nn()
             self.X_train, self.y_train, self.X_test, self.y_test = split_data_by_class(X, y)
             self.y_train_onehot = one_hot_encode(self.y_train, 3)
             
@@ -32,7 +30,6 @@ class NeuralNetworkApp:
             messagebox.showerror("Error", f"Failed to load data: {str(e)}")
     
     def create_widgets(self):
-        """Create GUI interface"""
         # Main title
         title = tk.Label(self.root, text="Neural Network Classifier", 
                         font=("Arial", 16, "bold"))
@@ -95,27 +92,30 @@ class NeuralNetworkApp:
         scrollbar.pack(side="right", fill="y", pady=10)
     
     def train_network(self):
-        """Train the neural network"""
         try:
             # Get parameters
             num_layers = int(self.layers_entry.get())
             neurons = [int(x.strip()) for x in self.neurons_entry.get().split(",")]
             
             if len(neurons) == 1:
-                hidden_layers = neurons * num_layers
+                num_of_neurons_of_each_hidden_layer = neurons * num_layers
+            elif len(neurons) == num_layers:
+                num_of_neurons_of_each_hidden_layer = neurons
             else:
-                hidden_layers = neurons
+                messagebox.showerror("Error", 
+                    f"Mismatch: You specified {num_layers} hidden layers")
+                return
             
-            learning_rate = float(self.lr_entry.get())
-            epochs = int(self.epochs_entry.get())
+            lr = float(self.lr_entry.get())
+            num_epochs = int(self.epochs_entry.get())
             activation = self.activation_var.get()
             use_bias = self.bias_var.get()
             
             # Create network
-            self.network = NeuralNetwork(
-                input_size=5,
-                hidden_layers=hidden_layers,
-                output_size=3,
+            self.network = NN(
+                input_sz=5,
+                hidden_layers=num_of_neurons_of_each_hidden_layer,
+                output_sz=3,
                 activation_func=activation,
                 use_bias=use_bias
             )
@@ -123,22 +123,24 @@ class NeuralNetworkApp:
             # Display info
             self.results_text.delete(1.0, tk.END)
             self.results_text.insert(tk.END, "=== Training Started ===\n")
-            self.results_text.insert(tk.END, f"Architecture: 5 input - {hidden_layers} hidden - 3 output\n")
-            self.results_text.insert(tk.END, f"Learning rate: {learning_rate}, Epochs: {epochs}\n")
+            self.results_text.insert(tk.END, f"Architecture: 5 input - {num_of_neurons_of_each_hidden_layer} hidden - 3 output\n")
+            self.results_text.insert(tk.END, f"Learning rate: {lr}, Epochs: {num_epochs}\n")
             self.results_text.insert(tk.END, f"Activation: {activation}, Bias: {use_bias}\n")
             self.results_text.insert(tk.END, "-" * 50 + "\n")
             
             # Train
-            loss_history = self.network.train(self.X_train, self.y_train_onehot, learning_rate, epochs)
+            loss_history = self.network.train(self.X_train, self.y_train_onehot, lr, num_epochs)
             
             self.results_text.insert(tk.END, f"\nTraining completed!\n")
             self.results_text.insert(tk.END, f"Final loss: {loss_history[-1]:.4f}\n")
+
+            # Plot network architecture
+            plot_network_architecture(num_of_neurons_of_each_hidden_layer)
             
         except Exception as e:
             messagebox.showerror("Error", f"Training failed: {str(e)}")
     
     def test_network(self):
-        """Test the trained network"""
         try:
             if not hasattr(self, 'network'):
                 messagebox.showerror("Error", "Please train the network first!")
@@ -147,13 +149,9 @@ class NeuralNetworkApp:
             # Make predictions
             predictions = self.network.predict(self.X_test)
             
-            # Create confusion matrix
-            cm = np.zeros((3, 3), dtype=int)
-            for true, pred in zip(self.y_test, predictions):
-                cm[true, pred] += 1
-            
-            # Calculate accuracy
-            accuracy = np.trace(cm) / np.sum(cm)
+            # Create confusion matrix and calculate accuracy using helpers
+            cm = create_confusion_matrix(self.y_test, predictions, 3)
+            accuracy = calculate_accuracy(cm)
             
             # Display results
             self.results_text.delete(1.0, tk.END)
@@ -176,13 +174,12 @@ class NeuralNetworkApp:
                 self.results_text.insert(tk.END, "\n")
             
             # Plot confusion matrix
-            self.plot_confusion_matrix(cm, class_names)
+            plot_confusion_matrix(cm, class_names)
             
         except Exception as e:
             messagebox.showerror("Error", f"Testing failed: {str(e)}")
     
     def classify_sample(self):
-        """Classify a single sample"""
         try:
             if not hasattr(self, 'network'):
                 messagebox.showerror("Error", "Please train the network first!")
@@ -200,9 +197,15 @@ class NeuralNetworkApp:
             input_frame.pack(pady=10)
             
             entries = {}
+            origin_location_values = ['Biscoe', 'Dream', 'Torgersen']
             for i, feature in enumerate(self.features):
                 tk.Label(input_frame, text=feature).grid(row=i, column=0, padx=5, pady=2, sticky="w")
-                entry = tk.Entry(input_frame)
+                if feature == 'OriginLocation':
+                    # Use dropdown for OriginLocation
+                    entry = ttk.Combobox(input_frame, values=origin_location_values, state='readonly')
+                    entry.current(0)  # Set default to first value
+                else:
+                    entry = tk.Entry(input_frame)
                 entry.grid(row=i, column=1, padx=5, pady=2)
                 entries[feature] = entry
             
@@ -211,15 +214,29 @@ class NeuralNetworkApp:
             
             def classify():
                 try:
-                    # Get input values
-                    sample = []
+                    # Get input values as dictionary
+                    sample_dict = {}
                     for feature in self.features:
-                        value = float(entries[feature].get())
-                        sample.append(value)
+                        value = entries[feature].get()
+                        if feature == 'OriginLocation':
+                            # Keep as string for encoding
+                            sample_dict[feature] = value
+                        else:
+                            # Convert to float
+                            sample_dict[feature] = float(value)
+                    
+                    # Apply the same preprocessing as training data
+                    preprocessed_sample = preprocess_sample(
+                        sample_dict, 
+                        self.features, 
+                        self.origin_location_encoder, 
+                        self.mean_imputer, 
+                        self.median_imputer, 
+                        self.scaler
+                    )
                     
                     # Predict
-                    sample_array = np.array([sample])
-                    probabilities = self.network.predict_proba(sample_array)[0]
+                    probabilities = self.network.predict_prob(preprocessed_sample)[0]
                     predicted_class = np.argmax(probabilities)
                     class_name = self.label_encoder.inverse_transform([predicted_class])[0]
                     
@@ -235,21 +252,10 @@ class NeuralNetworkApp:
             
         except Exception as e:
             messagebox.showerror("Error", f"Classification failed: {str(e)}")
-    
-    def plot_confusion_matrix(self, cm, class_names):
-        """Plot confusion matrix"""
-        plt.figure(figsize=(6, 5))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                   xticklabels=class_names, yticklabels=class_names)
-        plt.xlabel('Predicted Label')
-        plt.ylabel('True Label')
-        plt.title('Confusion Matrix')
-        plt.tight_layout()
-        plt.show()
 
 def main():
     root = tk.Tk()
-    app = NeuralNetworkApp(root)
+    app = App(root)
     root.mainloop()
 
 if __name__ == "__main__":
