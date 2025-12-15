@@ -1,5 +1,5 @@
 import numpy as np
-
+from sklearn.metrics import accuracy_score
 class NN:
     def __init__(self, input_sz, hidden_layers, output_sz, activation_func='sigmoid', use_bias=True):
         self.input_size, self.output_size= input_sz, output_sz
@@ -7,7 +7,7 @@ class NN:
         self.activation_func = activation_func
         self.use_bias = use_bias
         
-        # Initialize weights and biases
+        # Init weights and biases
         self.weights, self.biases = [], []
         layer_sizes = [input_sz] + list(hidden_layers) + [output_sz]
         
@@ -57,14 +57,18 @@ class NN:
         y = np.asarray(y, dtype=np.float64)
         output = np.asarray(output, dtype=np.float64)
         
+        if x.ndim == 1:
+            x = x.reshape(1, -1)
+            y = y.reshape(1, -1) if y.ndim == 1 else y.reshape(1, -1)
+            output = output.reshape(1, -1) if output.ndim == 1 else output.reshape(1, -1)
+        
         m = x.shape[0]
         num_layers = len(self.weights)
         deltas = [None] * num_layers
         
-        # Output layer error
-        deltas[-1] = output - y
+        deltas[-1] = y - output
         
-        # Backpropagate through hidden layers
+        # Backpropagate
         if num_layers > 1:
             for i in reversed(range(num_layers - 1)):
                 error = np.dot(deltas[i+1], self.weights[i+1].T)
@@ -73,27 +77,55 @@ class NN:
         
         # Update weights and biases
         for i in range(num_layers):
-            dW = np.dot(self.layer_outputs[i].T, deltas[i]) / m
-            dB = np.sum(deltas[i], axis=0, keepdims=True) / m
-            self.weights[i] -= lr * dW
+            dW = np.dot(self.layer_outputs[i].T, deltas[i])
+            dB = np.sum(deltas[i], axis=0, keepdims=True)
+            self.weights[i] += lr * dW
             if self.use_bias:
-                self.biases[i] -= lr * dB
+                self.biases[i] += lr * dB
     
     def train(self, x, y, lr, epochs):
         x = np.asarray(x, dtype=np.float64)
         y = np.asarray(y, dtype=np.float64)
         loss_history = []
+        accuracy_history = []
+        
+        num_samples = x.shape[0]
         
         for epoch in range(epochs):
-            output = self.forward(x)
-            loss = -np.mean(np.sum(y * np.log(output + 1e-8), axis=1))
-            loss_history.append(loss)
-            self.backward(x, y, output, lr)
+            epoch_loss = 0
+            
+            # Shuffle samples
+            indices = np.random.permutation(num_samples)
+            x_shuffled = x[indices]
+            y_shuffled = y[indices]
+            
+            # Train sample by sample
+            for sample_idx in range(num_samples):
+                x_sample = x_shuffled[sample_idx:sample_idx+1]  # Keep 2D shape
+                y_sample = y_shuffled[sample_idx:sample_idx+1]  # Keep 2D shape
+                
+                # Forward
+                output = self.forward(x_sample)
+                
+                sample_loss = -np.sum(y_sample * np.log(output + 1e-8))
+                epoch_loss += sample_loss
+                
+                # Backward
+                self.backward(x_sample, y_sample, output, lr)
+            
+            avg_loss = epoch_loss / num_samples
+            loss_history.append(avg_loss)
+            
+            # Calculate accuracy for the epoch
+            predictions = self.predict(x)
+            labels = np.argmax(y, axis=1)
+            accuracy = accuracy_score(labels, predictions)
+            accuracy_history.append(accuracy)
             
             if epoch % 100 == 0:
-                print(f"Epoch {epoch}, Loss: {loss:.4f}")
-        
-        return np.array(loss_history)
+                print(f"Epoch {epoch}, Loss: {avg_loss:.4f}, Accuracy: {accuracy*100:.2f}%")
+    
+        return np.array(loss_history), np.array(accuracy_history)
     
     def predict_prob(self, x):
         x = np.asarray(x, dtype=np.float64)

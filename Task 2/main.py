@@ -4,7 +4,7 @@ import numpy as np
 
 from NN import NN
 from preprocessing import prepare_data_for_nn, split_data_by_class, one_hot_encode, preprocess_sample
-from helpers import create_confusion_matrix, calculate_accuracy, plot_confusion_matrix, plot_training_loss, plot_network_architecture
+from helpers import create_confusion_matrix, calculate_accuracy, plot_confusion_matrix
 
 class App:
     def __init__(self, root):
@@ -129,14 +129,12 @@ class App:
             self.results_text.insert(tk.END, "-" * 50 + "\n")
             
             # Train
-            loss_history = self.network.train(self.X_train, self.y_train_onehot, lr, num_epochs)
+            loss_history, accuracy_history = self.network.train(self.X_train, self.y_train_onehot, lr, num_epochs)
             
             self.results_text.insert(tk.END, f"\nTraining completed!\n")
-            self.results_text.insert(tk.END, f"Final loss: {loss_history[-1]:.4f}\n")
+            self.results_text.insert(tk.END, f"Final loss: {float(loss_history[-1]):.4f}\n")
+            self.results_text.insert(tk.END, f"Final accuracy: {float(accuracy_history[-1])*100:.2f}%\n")
 
-            # Plot network architecture
-            plot_network_architecture(num_of_neurons_of_each_hidden_layer)
-            
         except Exception as e:
             messagebox.showerror("Error", f"Training failed: {str(e)}")
     
@@ -197,13 +195,12 @@ class App:
             input_frame.pack(pady=10)
             
             entries = {}
-            origin_location_values = ['Biscoe', 'Dream', 'Torgersen']
+            origin_location_values = list(self.origin_location_encoder.classes_)
             for i, feature in enumerate(self.features):
                 tk.Label(input_frame, text=feature).grid(row=i, column=0, padx=5, pady=2, sticky="w")
                 if feature == 'OriginLocation':
-                    # Use dropdown for OriginLocation
                     entry = ttk.Combobox(input_frame, values=origin_location_values, state='readonly')
-                    entry.current(0)  # Set default to first value
+                    entry.current(0)
                 else:
                     entry = tk.Entry(input_frame)
                 entry.grid(row=i, column=1, padx=5, pady=2)
@@ -214,37 +211,36 @@ class App:
             
             def classify():
                 try:
-                    # Get input values as dictionary
+                    # Collect inputs
                     sample_dict = {}
                     for feature in self.features:
                         value = entries[feature].get()
                         if feature == 'OriginLocation':
-                            # Keep as string for encoding
-                            sample_dict[feature] = value
+                            sample_dict[feature] = str(value)
                         else:
-                            # Convert to float
                             sample_dict[feature] = float(value)
-                    
-                    # Apply the same preprocessing as training data
+
+                    # Apply same preprocessing pipeline as training
                     preprocessed_sample = preprocess_sample(
-                        sample_dict, 
-                        self.features, 
-                        self.origin_location_encoder, 
-                        self.mean_imputer, 
-                        self.median_imputer, 
+                        sample_dict,
+                        self.features,
+                        self.origin_location_encoder,
+                        self.mean_imputer,
+                        self.median_imputer,
                         self.scaler
                     )
-                    
-                    # Predict
+
+                    # Predict probabilities and class
                     probabilities = self.network.predict_prob(preprocessed_sample)[0]
                     predicted_class = np.argmax(probabilities)
                     class_name = self.label_encoder.inverse_transform([predicted_class])[0]
-                    
+
                     # Display results
                     result_text = f"Predicted: {class_name}\n"
                     result_text += f"Confidence: {probabilities[predicted_class] * 100:.1f}%"
                     result_label.config(text=result_text)
-                    
+                except ValueError as ve:
+                    messagebox.showerror("Error", f"Invalid input value: {ve}")
                 except Exception as e:
                     messagebox.showerror("Error", f"Please check input values: {str(e)}")
             
